@@ -7,6 +7,8 @@
 #include <fstream>
 #include <sstream>
 #include <nlohmann/json.hpp>
+#include <thread>
+
 
 inline int n_reduce(const std::string& key, int nreduce) {
     std::hash<std::string> hasher;
@@ -24,7 +26,6 @@ void doTask(Task& task, int nreduce) {
         std::vector<std::vector<std::pair<std::string, std::string>>> files(nreduce);
         for(auto& line : result) {
             files[n_reduce(line.first, nreduce)].push_back(line);
-            std::cout << line.first << ' ' << line.second << '\n';
         }
         std::vector<std::pair<std::string, std::fstream>> filenames(nreduce);
         for(auto& filename : filenames) {
@@ -48,8 +49,18 @@ void start() {
     rpc::client client("127.0.0.1", rpc::constants::DEFAULT_PORT);
     while(true) {
         auto result = client.call("RequestTask").as<Task>();
-        if(result.filename != "")
+        if(result.filename != "") {
             doTask(result, 10);
+            client.call("RetireTask", result.task_number).as<Done>();
+        } else {
+            {
+                using namespace std::chrono_literals;
+                std::this_thread::sleep_for(2000ms);
+            }
+        }
+        std::cout << "Test" << result.task_number;
+        if(result.task_number == -2)
+            break;
     }
 }
 

@@ -17,6 +17,10 @@ struct Task {
     MSGPACK_DEFINE_ARRAY(started, filename, task_number, isMap)
 };
 
+struct Done {
+    MSGPACK_DEFINE_ARRAY()
+};
+
 class Coordinator {
 
 public:
@@ -38,7 +42,7 @@ private:
 private:
     bool is_expired() const noexcept;
     Task get_task();
-    void retire_task(int task);
+    Done retire_task(int task);
     void check_if_done();
     void queue_reduce_tasks();
 

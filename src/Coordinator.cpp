@@ -1,5 +1,6 @@
 #include <rpc/server.h>
 #include "../include/Coordinator.h"
+#include "../include/Scheduler.h"
 #include <mutex>
 #include <chrono>
 
@@ -26,13 +27,12 @@ bool Coordinator::is_expired() const noexcept {
 
 bool Coordinator::done() const noexcept { return m_done; };
 
-void Coordinator::retire_task(int task_target) { 
+Done Coordinator::retire_task(int task_target) { 
     std::scoped_lock guard(m_mu);
     bool exists;
-    for(auto& task : m_queued) {
-        
-    }
     m_in_progress.remove_if([=](Task& task) { return task.task_number == task_target; }); 
+    check_if_done();
+    return {};
 }
 
 void Coordinator::queue_reduce_tasks() {
@@ -43,9 +43,11 @@ void Coordinator::queue_reduce_tasks() {
 }
 
 void Coordinator::check_if_done() {
-    std::scoped_lock guard(m_mu);
+    //Must remove later
+    m_finished_map = true;
     if(m_queued.empty() && m_in_progress.empty() && m_finished_map)
         m_done = true;
+    //Get Next Task
 }
 
 Task Coordinator::get_task() {
@@ -73,7 +75,7 @@ Task Coordinator::get_task() {
 void Coordinator::start() {
     rpc::server srv("127.0.0.1", rpc::constants::DEFAULT_PORT);
     srv.bind("RequestTask", [&]() { return this->get_task(); });
-    srv.bind("RetireTask", [&](int task_target) { this->retire_task(task_target); });
+    srv.bind("RetireTask", [&](int task_target) { return this->retire_task(task_target); });
     srv.suppress_exceptions(true);
     srv.run();
 }
